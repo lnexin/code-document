@@ -293,3 +293,130 @@ dockerdemocontainer.tar表示要导入的容器，dockerdemo:imp表示导入后�
 
 1. 若是只想备份image，使用save和load。
 2. 若是在启动容器后，容器内容有变化，需要备份，则使用export和import。
+
+
+
+### 1.镜像制作
+
+使用Dockerfile制作一个[docker](https://so.csdn.net/so/search?q=docker&spm=1001.2101.3001.7020)镜像
+
+#### 1.1 编辑Dockerfile文件
+
+下面是一个制作[openssh](https://so.csdn.net/so/search?q=openssh&spm=1001.2101.3001.7020)的Dockerfile文件：
+
+[root@docker]# vim Dockerfile
+
+```
+FROM centos:7LABEL  demo demo@gmail.comRUN yum -y install openssh-server \&& useradd natash \&& echo "redhat"|passwd --stdin natash \&& echo "redhat"|passwd --stdin root   \&& ssh-keygen -q -t rsa -b 2048 -f /etc/ssh/ssh_host_rsa_key -N ''\&& ssh-keygen -q -t ecdsa -f /etc/ssh/ssh_host_ecdsa_key -N '' \&& ssh-keygen -t dsa -f /etc/ssh/ssh_host_ed25519_key -N ''ADD ssh_host_ecdsa_key   /tmp/ssh_host_ecdsa_keyADD ssh_host_ed25519_key /tmp/ssh_host_ed25519_keyADD ssh_host_rsa_key     /tmp/ssh_host_rsa_keyCMD  ["/usr/sbin/sshd", "-D"]```
+
+说明：
+
+FROM表示下载基本镜像
+
+LABEL作者信息
+
+RUN 表示要执行的动作，相当于执行脚本，执行的是/bin/sh -c ***的动作
+
+ADD表示复制文件
+
+CMD表示执行一个命令
+
+#### **1.2 FROM 和 RUN 指令的作用**
+
+**FROM**：定制的镜像都是基于 FROM 的镜像，这里的 centos就是定制需要的基础镜像。后续的操作都是基于 centos。
+
+**RUN**：用于执行后面跟着的命令行命令。有以下俩种格式：
+
+shell 格式：
+
+```
+RUN <命令行命令># <命令行命令> 等同于，在终端操作的 shell 命令。```
+
+exec 格式：
+
+```
+RUN ["可执行文件", "参数1", "参数2"]# 例如：# RUN ["./test.php", "dev", "offline"] 等价于 RUN ./test.php dev offline```
+
+**注意**：Dockerfile 的指令每执行一次都会在 docker 上新建一层。所以过多无意义的层，会造成镜像膨胀过大。例如：
+
+```
+FROM centosRUN yum install wgetRUN wget -O redis.tar.gz "http://download.redis.io/releases/redis-5.0.3.tar.gz"RUN tar -xvf redis.tar.gz以上执行会创建 3 层镜像。可简化为以下格式：FROM centosRUN yum install wget \&& wget -O redis.tar.gz "http://download.redis.io/releases/redis-5.0.3.tar.gz" \&& tar -xvf redis.tar.gz```
+
+如上，以 && 符号连接命令，这样执行后，只会创建 1 层镜像。
+
+#### 1.3 镜像构建
+
+在 Dockerfile 文件的存放目录下，执行构建动作。
+
+以下示例，通过目录下的 Dockerfile 构建一个 openssl:demo（镜像名称:镜像标签）。
+
+```
+$ docker build -t openssl:demo .```
+
+**注**：最后的 . 代表本次执行的上下文路径。
+
+上下文路径，是指 docker 在构建镜像，有时候想要使用到本机的文件（比如复制），docker build 命令得知这个路径后，会将路径下的所有内容打包。
+
+### 2. 导入导出命令介绍
+
+涉及的命令有export、import、save、load
+
+#### 2.1 save
+
+* 命令  
+    `docker save [options] images [images...]`
+* 示例  
+    `docker save -o nginx.tar nginx:latest`  
+    或  
+    `docker save > nginx.tar nginx:latest`  
+    其中-o和>表示输出到文件，`nginx.tar`为目标文件，`nginx:latest`是源镜像名（name:tag）
+
+#### 2.2 load
+
+* 命令  
+    `docker load [options]`
+* 示例  
+    `docker load -i nginx.tar`  
+    或  
+    `docker load < nginx.tar`  
+    其中-i和<表示从文件输入。会成功导入镜像及相关元数据，包括tag信息
+
+#### 2.3 export
+
+* 命令  
+    `docker export [options] container`
+* 示例  
+    `docker export -o nginx-test.tar nginx-test`  
+    其中-o表示输出到文件，`nginx-test.tar`为目标文件，`nginx-test`是源容器名（name）
+
+#### 2.4 import
+
+* 命令  
+    `docker import [options] file|URL|- [REPOSITORY[:TAG]]`
+* 示例  
+    `docker import nginx-test.tar nginx:imp`  
+    或  
+    `cat nginx-test.tar | docker import - nginx:imp`
+
+### 2.5 区别
+
+* export命令导出的tar文件略小于save命令导出的
+* export命令是从容器（container）中导出tar文件，而save命令则是从镜像（images）中导出  
+    基于第二点，export导出的文件再import回去时，无法保留镜像所有历史（即每一层layer信息，不熟悉的可以去看Dockerfile），不能进行回滚操作；而save是依据镜像来的，所以导入时可以完整保留下每一层layer信息。如下图所示，nginx:latest是save导出load导入的，nginx:imp是export导出import导入的。
+
+### 2.6 建议
+
+* 可以依据具体使用场景来选择命令
+    
+* 若是只想备份images，使用save、load即可
+* 若是在启动容器后，容器内容有变化，需要备份，则使用export、import
+
+
+https://www.hangge.com/blog/cache/detail_2411.html
+
+https://www.cnblogs.com/dotnet261010/p/13283176.html
+
+
+https://duckcloud.cn/archives/1690598317463
+
+https://blog.csdn.net/welcome66/article/details/105640242
