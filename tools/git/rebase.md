@@ -1,5 +1,5 @@
 > 来源: https://waynerv.com/friends/  
-
+> http://jartto.wang/2018/12/11/git-rebase/
 
 以前对 `git rebase -i` 的用法一直是一知半解，一次在需要合并多个提交时刚好用到，一顿操作差点把提交都搞丢了，幸好后面顺利找回，因此记录一下学习 `rebase` 命令的过程。
 
@@ -63,7 +63,7 @@
 ```
     
 * 使用 `rebase`
-    
+    git 
     步骤与使用 `merge` 基本相同，唯一的区别是第 2 步的命令替换成： `git rebase master`。
     
     执行过程如下图所示：
